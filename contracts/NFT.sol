@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 
 // 一个NFT拍卖市场
-contract Market is ERC721URIStorage {
+contract NFT is ERC721URIStorage {
     uint256 private _nextTokenId = 0;
     address private _owner;
     constructor() ERC721("MyMarket", "MMK") {
