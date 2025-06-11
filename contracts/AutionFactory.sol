@@ -3,18 +3,32 @@ pragma solidity ^0.8.0;
 
 import "./Aution.sol";
 import "./interfaces/IAutionFactory.sol";
+import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
+
 
 //拍卖市场
 // 1. 拍卖市场可以创建拍卖
 contract AutionFactory is IAutionFactory {
     //所有的拍卖
     address[] public autions;
+    // 拍卖场所有者
     address private marketOwner;
+    // 下一个拍卖Id
+    uint256 private _nextAutionId = 1;
+    // 拍卖Id => 拍卖合约地址
+    mapping(uint256 autionId => address autionContract) private _autionData;
+    // 链上价格
+    mapping(address => AggregatorV3Interface) private _priceFeeds;
+
+    address linkAddress = 0x779877A7B0D9E8603169DdbD7836e478b4624789;
+    address ethAddress = 0x0000000000000000000000000000000000000000;
 
     event AutionCreated(address indexed autionAddress);
 
     constructor() {
         marketOwner = msg.sender;
+        _priceFeeds[linkAddress] = AggregatorV3Interface(0xc59E3633BAAC79493d908e63626716e204A45EdF);
+        _priceFeeds[ethAddress] = AggregatorV3Interface(0x694AA1769357215DE4FAC081bf1f309aDC325306);
     }
 
     //创建拍卖
@@ -23,7 +37,7 @@ contract AutionFactory is IAutionFactory {
         uint256 _nftTokenId,
         uint256 _startingPrice,
         uint256 _duraion
-    ) public returns (address) {
+    ) public returns (uint256) {
         Aution aution = new Aution();
 
         //将NFT转让给拍卖合约
@@ -43,14 +57,22 @@ contract AutionFactory is IAutionFactory {
 
         autions.push(autionAddress);
 
+        uint256 autionId = _nextAutionId++;
+        _autionData[autionId] = autionAddress;
+
         emit AutionCreated(autionAddress);
 
-        return autionAddress;
+        return autionId;
     }
 
     // 正在拍卖的NFT数量
     function getAutionCount() public view returns (uint256) {
         return autions.length;
+    }
+
+    /**获取拍卖Id对应的合约地址 */
+    function getAutionContract(uint256 _autionId) public view returns (address) {
+        return _autionData[_autionId];
     }
 
     // 某个拍卖结束
@@ -62,5 +84,19 @@ contract AutionFactory is IAutionFactory {
                 break;
             }
         }
+    }
+
+    //获取link/usdt价格
+    function formatLinkToUsdtPrice(uint256 amount) external view override returns(uint256) {
+        AggregatorV3Interface priceFeed = _priceFeeds[linkAddress];
+        (,int256 price,,,) = priceFeed.latestRoundData();
+        return amount * uint256(price);
+    }
+
+    //获取eth/usdt价格
+    function formatEthToUsdtPrice(uint256 amount) external view override returns(uint256) {
+        AggregatorV3Interface priceFeed = _priceFeeds[ethAddress];
+        (,int256 price,,,) = priceFeed.latestRoundData();
+        return amount * uint256(price);
     }
 }

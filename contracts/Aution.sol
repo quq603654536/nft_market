@@ -2,11 +2,12 @@
 pragma solidity ^0.8;
 
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "./interfaces/IAutionFactory.sol";
 
 // 拍卖合约
-// 支持货币 ETH USDT
+// 支持货币 ETH 和 ERC20代币
 contract Aution is ReentrancyGuard {
     // 拍卖市场地址
     address public factory;
@@ -26,14 +27,18 @@ contract Aution is ReentrancyGuard {
     uint256 public highestBid;
     // 当前最高出价者
     address public highestBidder;
-
+    // 货币类型 0x00: ETH 其他: LINK
+    address public tokenAddress;
+    // 货币的真实数量
+    uint256 public tokenValue = 0;
+    // 拍卖是否结束
     bool public isEnd;
 
     //出价记录
     mapping(address => uint256) public bidsData;
 
-    modifier onlyMarket() {
-        require(msg.sender == factory, "Only market can call this function");
+    modifier onlyFactory() {
+        require(msg.sender == factory, "Only factory can call this function");
         _;
     }
 
@@ -66,7 +71,7 @@ contract Aution is ReentrancyGuard {
         uint256 _startPrice,
         uint256 _startTime,
         uint256 _duration
-    ) external onlyMarket {
+    ) external onlyFactory {
         seller = _seller;
         nftContract = _nftContract;
         nftTokenId = _nftTokenId;
@@ -76,24 +81,71 @@ contract Aution is ReentrancyGuard {
     }
 
     // 拍卖出价
-    function placeBid() external payable nonReentrant timeToBid {
+    function placeBidWithETH() external payable nonReentrant timeToBid {
+        require(!isEnd, "Aution has end");
+
+        uint256 amount = IAutionFactory(factory).formatEthToUsdtPrice(msg.value);
+        uint256 startPriceUsdt = IAutionFactory(factory).formatEthToUsdtPrice(startPrice);
         //判断出价是否大于当前最高出价
         require(
-            msg.value > highestBid && msg.value >= startPrice,
+            amount > highestBid && amount >= startPriceUsdt,
             "Bid not high enough"
         );
-        require(!isEnd, "Aution has end");
-        // 如果有最高出价者，将最高出价退回
-        if (highestBidder != address(0)) {
-            payable(highestBidder).transfer(highestBid);
-        }
+        
+        returnToken();
 
         // 更新最高出价者和最高出价
         highestBidder = msg.sender;
-        highestBid = msg.value;
+        highestBid = amount;
+        tokenAddress = address(0);
+        tokenValue = msg.value;
 
         // 更新出价记录
-        bidsData[msg.sender] = msg.value;
+        bidsData[msg.sender] = amount;
+    }
+
+    // 支持link币的拍卖
+    function placeBidWithERC20(address bidTokenAddress, uint256 value) external nonReentrant timeToBid {
+        require(!isEnd, "Aution has end");
+        require(bidTokenAddress == 0x779877A7B0D9E8603169DdbD7836e478b4624789, "only accept link");
+
+        uint256 amount = IAutionFactory(factory).formatLinkToUsdtPrice(value);
+        uint256 startPriceUsdt = IAutionFactory(factory).formatLinkToUsdtPrice(startPrice);
+        //判断出价是否大于当前最高出价
+        require(
+            amount > highestBid && amount >= startPriceUsdt,
+            "Bid not high enough"
+        );
+        
+        // 代币转移到拍卖合约
+        IERC20(bidTokenAddress).transferFrom(msg.sender, address(this), value);
+
+        returnToken();
+
+        // 更新最高出价者和最高出价
+        highestBidder = msg.sender;
+        highestBid = amount;
+        tokenAddress = bidTokenAddress;
+        tokenValue = value;
+
+        // 更新出价记录
+        bidsData[msg.sender] = amount;
+
+        
+    }
+
+    /**回退拍卖的币 */
+    function returnToken() private {
+        // 如果有最高出价者，将最高出价退回
+        if (highestBidder != address(0)) {
+            if (tokenAddress == address(0)) {
+                // 退还ETH
+                payable(highestBidder).transfer(tokenValue);
+            } else {
+                // 退还代币
+                IERC20(tokenAddress).transferFrom(address(this), highestBidder, tokenValue);
+            }
+        }
     }
 
     // 取消拍卖
@@ -102,14 +154,12 @@ contract Aution is ReentrancyGuard {
         // 将 NFT 转让给发起人
         IERC721(nftContract).transferFrom(address(this), seller, nftTokenId);
 
-        // 退还最高出价
-        if (highestBidder != address(0)) {
-            payable(highestBidder).transfer(highestBid);
-        }
+        returnToken();
 
         IAutionFactory(factory).autionEnd(address(this));
     }
 
+    // 结束拍卖
     function endAution() external onlySeller timeToBid {
         require(!isEnd, "Aution has end");
         isEnd = true;
