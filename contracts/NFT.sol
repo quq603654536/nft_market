@@ -2,32 +2,32 @@
 // contracts/Market.sol - Market contract
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
-import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
-import {CCIPReceiver} from "@chainlink/contracts-ccip/contracts/applications/CCIPReceiver.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC721/ERC721Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721URIStorageUpgradeable.sol";
+import "./CCIPReceiverUpgradeable.sol";
 import {Client} from "@chainlink/contracts-ccip/contracts/libraries/Client.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
 // 一个NFT拍卖市场
-contract NFT is ERC721URIStorage, CCIPReceiver {
-    // CCIP 路由器地址（需根据网络配置，如以太坊主网为 0x2718281c...）
-    // https://docs.chain.link/ccip/directory/testnet
-    address public ccipRouter;
+contract NFT is ERC721URIStorageUpgradeable, CCIPReceiverUpgradeable, UUPSUpgradeable {
+
     // 跨链消息来源链的链 ID（如 Solana 为 101，需参考 CCIP 文档）
     uint64 public sourceChainId;
 
-    uint256 private _nextTokenId = 0;
-    address private _owner;
+    uint256 public _nextTokenId;
+    address public _owner;
 
     // 添加消息 ID 缓存
     mapping(bytes32 => bool) public processedMessages;
 
-    constructor(
-        address _ccipRouter, 
-        uint64 _sourceChainId
-    ) ERC721("MyMarket", "MMK") CCIPReceiver(_ccipRouter) {
+    function initialize(address _ccipRouter, uint64 _sourceChainId) public initializer {
+        // 调用父合约的初始化函数
+        __ERC721_init("MyMarket", "MMK");
+        __UUPSUpgradeable_init();
+        __CCIPReceiver_init(_ccipRouter);  // 初始化 CCIPReceiver
         _owner = msg.sender;
-        ccipRouter = _ccipRouter;
         sourceChainId = _sourceChainId;
+        _nextTokenId = 0; // 在初始化函数中设置初始值
     }
 
     event SendNFT(address recipient, string tokenURI);
@@ -39,6 +39,13 @@ contract NFT is ERC721URIStorage, CCIPReceiver {
         address recipient
     );
 
+    function _authorizeUpgrade(address newImplementation)
+        internal
+        override
+        virtual 
+        onlyOwner
+    {}
+
     modifier onlyOwner() {
         require(msg.sender == _owner, "Only owner can call this function");
         _;
@@ -48,7 +55,12 @@ contract NFT is ERC721URIStorage, CCIPReceiver {
         return _owner;
     }
 
-    function supportsInterface(bytes4 interfaceId) public view override(ERC721URIStorage, CCIPReceiver) returns (bool) {
+    function supportsInterface(bytes4 interfaceId) 
+        public 
+        pure 
+        override(ERC721URIStorageUpgradeable, CCIPReceiverUpgradeable) 
+        returns (bool) 
+    {
         return super.supportsInterface(interfaceId);
     }
 
