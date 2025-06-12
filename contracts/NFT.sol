@@ -4,16 +4,35 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
+import {CCIPReceiver} from "@chainlink/contracts-ccip/contracts/applications/CCIPReceiver.sol";
+import {Client} from "@chainlink/contracts-ccip/contracts/libraries/Client.sol";
 
 // 一个NFT拍卖市场
-contract NFT is ERC721URIStorage {
+contract NFT is ERC721URIStorage, CCIPReceiver {
+    // CCIP 路由器地址（需根据网络配置，如以太坊主网为 0x2718281c...）
+    address public ccipRouter;
+    // 跨链消息来源链的链 ID（如 Solana 为 101，需参考 CCIP 文档）
+    uint64 public sourceChainId;
+
     uint256 private _nextTokenId = 0;
     address private _owner;
-    constructor() ERC721("MyMarket", "MMK") {
+    constructor(
+        address _ccipRouter,
+        uint64 _sourceChainId
+    ) ERC721("MyMarket", "MMK") CCIPReceiver(_ccipRouter) {
         _owner = msg.sender;
+        ccipRouter = _ccipRouter;
+        sourceChainId = _sourceChainId;
     }
 
     event SendNFT(address recipient, string tokenURI);
+    // 事件日志
+    event CrossChainMessageReceived(
+        bytes32 indexed messageId,
+        uint64 indexed sourceChainId,
+        uint256 indexed tokenId,
+        address recipient
+    );
 
     modifier onlyOwner() {
         require(msg.sender == _owner, "Only owner can call this function");
@@ -24,11 +43,18 @@ contract NFT is ERC721URIStorage {
         return _owner;
     }
 
+    function supportsInterface(bytes4 interfaceId) public view override(ERC721URIStorage, CCIPReceiver) returns (bool) {
+        return super.supportsInterface(interfaceId);
+    }
+
     // 发放一个NFT
     // 1. 生成一个新的tokenId
     // 2. 给recipient mint一个token
     // 3. 设置token的URI
-    function sendNFT(address recipient, string memory tokenURI) public onlyOwner returns (uint256) {
+    function sendNFT(
+        address recipient,
+        string memory tokenURI
+    ) public onlyOwner returns (uint256) {
         require(recipient != address(0), "Recipient address cannot be zero");
 
         uint256 _tokenId = ++_nextTokenId;
@@ -45,5 +71,26 @@ contract NFT is ERC721URIStorage {
         require(to != address(0), "Recipient address cannot be zero");
         // 函数会自动检查调用者是否为代币所有者、被授权者或运营商
         safeTransferFrom(msg.sender, to, tokenId);
+    }
+
+    /// handle a received message
+    function _ccipReceive(
+        Client.Any2EVMMessage memory any2EvmMessage
+    ) internal override {
+
+        // 解析消息内容（示例格式：bytes = abi.encode(tokenId, senderAddress, uri)）
+        (uint256 tokenId, address nftOwner, string memory tokenURI) = abi
+            .decode(any2EvmMessage.data, (uint256, address, string));
+
+        // 铸造 NFT（ERC-721 单例铸造）
+        _safeMint(nftOwner, tokenId);
+        _setTokenURI(tokenId, tokenURI);
+
+        emit CrossChainMessageReceived(
+            any2EvmMessage.messageId,
+            any2EvmMessage.sourceChainSelector,
+            tokenId,
+            nftOwner
+        );
     }
 }

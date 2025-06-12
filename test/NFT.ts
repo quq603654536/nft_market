@@ -19,8 +19,8 @@ describe('Market', () => {
         account = accounts[0];
         addr1 = accounts[1];
         addr2 = accounts[2];
-        const marketFactory = await ethers.getContractFactory('Market');
-        nftContract = await marketFactory.deploy();
+        const Factory = await ethers.getContractFactory('NFT');
+        nftContract = await Factory.deploy("0x0BF3dE8c5D3e8A2B34D2BEeB17ABfCeBaf363A59", 101);
         await nftContract.waitForDeployment();
         console.log("部署合约成功", nftContract.target)
     });
