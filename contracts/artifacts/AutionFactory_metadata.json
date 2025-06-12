@@ -6,7 +6,13 @@
 	"output": {
 		"abi": [
 			{
-				"inputs": [],
+				"inputs": [
+					{
+						"internalType": "bool",
+						"name": "isHardHat",
+						"type": "bool"
+					}
+				],
 				"stateMutability": "nonpayable",
 				"type": "constructor"
 			},
@@ -232,27 +238,27 @@
 			]
 		},
 		"contracts/Aution.sol": {
-			"keccak256": "0xafb61552bfa7f340bd5e6c37ad3343b4ebc767fbb0055fc1e8523513534a130e",
+			"keccak256": "0xd6cd9c009471aff6aca88bb48bed6a6ccb9f94b1a512f056992e03fe3517c806",
 			"license": "MIT",
 			"urls": [
-				"bzz-raw://2869d162b360e780bb3d253b0583ccfaa51bdbdc169f29a483e909b1e1aa06aa",
-				"dweb:/ipfs/QmWwewcK9Fqx3hub23X6vsn7iaHpyHHSRskEDVNbWyL2br"
+				"bzz-raw://aa387e2dd75792ae8da844fc8fc4a6bc8dbac64094138dec0321915bcd7a6fb8",
+				"dweb:/ipfs/Qme5kvNj94tY7hfR3vEad2Jst3sRg2ey6L9wxnp9K23vZo"
 			]
 		},
 		"contracts/AutionFactory.sol": {
-			"keccak256": "0x19651865b95cb578f406308160c3c088a562bbc984b88e7de93246c392ce5855",
+			"keccak256": "0x16bb7aaaabc3276fe98f78e8f4f1a6f3a28b1cfd5f728c15525a598f9cd81030",
 			"license": "MIT",
 			"urls": [
-				"bzz-raw://64710013d8fa46d0097cdf15efc25f5391c31de5162408499d2c0bab9f42bc52",
-				"dweb:/ipfs/QmWDB3AUydRrkinCJwtuSzgLQJrDYbBXr2pQEjJzEEK8sU"
+				"bzz-raw://7d593d9cdd416368ce60d8b118a4b5ab16a626a350dd59d34acfa0a20fa4b4ce",
+				"dweb:/ipfs/QmfHJiJoxXhKsyuJyuYyok3xDw2RtZRHm4smWrzb73ZSwY"
 			]
 		},
 		"contracts/interfaces/IAutionFactory.sol": {
-			"keccak256": "0x5cafd8eeee92f80e3be786114b6413a471404e505c01ba5949cad2e1887ecceb",
+			"keccak256": "0x364777506e647473f235a562f81e5f8eac85dc268a312f4c3f152c9b07542d16",
 			"license": "MIT",
 			"urls": [
-				"bzz-raw://3eab3d10bc8fa25ab8ab5ea0d44250d9b1b5c794891c03221f3f04cf7163faad",
-				"dweb:/ipfs/QmeRHJDFaNnQQJP3dpbJP91wnmqkQkPqVU4J3yviF7Ww9a"
+				"bzz-raw://0e1fd528544423ff447a91196556adeb3aafddf39514cbe7edb50ac82fdeeeec",
+				"dweb:/ipfs/QmUrywLHmErKPd37PCARmRaUi4tq2tawJxrnbhZztKtdUL"
 			]
 		}
 	},

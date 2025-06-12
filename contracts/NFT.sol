@@ -83,11 +83,11 @@ contract NFT is ERC721URIStorage, CCIPReceiver {
         Client.Any2EVMMessage memory any2EvmMessage
     ) internal override {
          // 校验消息来源链（防止非预期链的消息）
-        require(condition);(msg.sender == ccipRouter, "Only CCIP router can send messages");
-        require(condition);(any2EvmMessage.sourceChainSelector == sourceChainId, "Invalid source chain");
+        require(msg.sender == ccipRouter, "Only CCIP router can send messages");
+        require(any2EvmMessage.sourceChainSelector == sourceChainId, "Invalid source chain");
         // 同个跨链消息只处理一次
-        require(!processedMessages[messageId], "Message already processed");
-        processedMessages[messageId] = true;
+        require(!processedMessages[any2EvmMessage.messageId], "Message already processed");
+        processedMessages[any2EvmMessage.messageId] = true;
 
         // 解析消息内容（示例格式：bytes = abi.encode(tokenId, senderAddress, uri)）
         (uint256 tokenId, address nftOwner, string memory tokenURI) = abi

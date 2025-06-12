@@ -85,10 +85,9 @@ contract Aution is ReentrancyGuard {
         require(!isEnd, "Aution has end");
 
         uint256 amount = IAutionFactory(factory).formatEthToUsdtPrice(msg.value);
-        uint256 startPriceUsdt = IAutionFactory(factory).formatEthToUsdtPrice(startPrice);
         //判断出价是否大于当前最高出价
         require(
-            amount > highestBid && amount >= startPriceUsdt,
+            amount > highestBid && amount >= startPrice,
             "Bid not high enough"
         );
         
@@ -107,13 +106,12 @@ contract Aution is ReentrancyGuard {
     // 支持link币的拍卖
     function placeBidWithERC20(address bidTokenAddress, uint256 value) external nonReentrant timeToBid {
         require(!isEnd, "Aution has end");
-        require(bidTokenAddress == 0x779877A7B0D9E8603169DdbD7836e478b4624789, "only accept link");
+
 
         uint256 amount = IAutionFactory(factory).formatLinkToUsdtPrice(value);
-        uint256 startPriceUsdt = IAutionFactory(factory).formatLinkToUsdtPrice(startPrice);
         //判断出价是否大于当前最高出价
         require(
-            amount > highestBid && amount >= startPriceUsdt,
+            amount > highestBid && amount >= startPrice,
             "Bid not high enough"
         );
         
@@ -129,9 +127,7 @@ contract Aution is ReentrancyGuard {
         tokenValue = value;
 
         // 更新出价记录
-        bidsData[msg.sender] = amount;
-
-        
+        bidsData[msg.sender] = amount;    
     }
 
     /**回退拍卖的币 */
@@ -139,11 +135,15 @@ contract Aution is ReentrancyGuard {
         // 如果有最高出价者，将最高出价退回
         if (highestBidder != address(0)) {
             if (tokenAddress == address(0)) {
-                // 退还ETH
-                payable(highestBidder).transfer(tokenValue);
+                // 使用 call 而不是 transfer 来处理可能的失败
+                (bool success, ) = payable(highestBidder).call{value: tokenValue}("");
+                require(success, "ETH transfer failed");
             } else {
                 // 退还代币
-                IERC20(tokenAddress).transferFrom(address(this), highestBidder, tokenValue);
+                require(
+                    IERC20(tokenAddress).transfer(highestBidder, tokenValue),
+                    "Token transfer failed"
+                );
             }
         }
     }
@@ -171,8 +171,16 @@ contract Aution is ReentrancyGuard {
                 highestBidder,
                 nftTokenId
             );
-            // 将拍卖资金转给发起人
-            payable(seller).transfer(highestBid);
+            // 根据代币类型转移正确的金额
+            if (tokenAddress == address(0)) {
+                (bool success, ) = payable(seller).call{value: tokenValue}("");
+                require(success, "ETH transfer failed");
+            } else {
+                require(
+                    IERC20(tokenAddress).transfer(seller, tokenValue),
+                    "Token transfer failed"
+                );
+            }
         } else {
             // 如果没有最高出价者，将 NFT 转让给发起人
             IERC721(nftContract).transferFrom(

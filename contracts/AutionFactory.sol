@@ -25,10 +25,18 @@ contract AutionFactory is IAutionFactory {
 
     event AutionCreated(address indexed autionAddress);
 
-    constructor() {
+    bool private _isHardHat = false;
+
+    constructor(bool isHardHat, address _linkAddress) {
+
         marketOwner = msg.sender;
+        if (_linkAddress != address(0)) {
+            linkAddress = _linkAddress;
+        }
+
         _priceFeeds[linkAddress] = AggregatorV3Interface(0xc59E3633BAAC79493d908e63626716e204A45EdF);
         _priceFeeds[ethAddress] = AggregatorV3Interface(0x694AA1769357215DE4FAC081bf1f309aDC325306);
+        _isHardHat = isHardHat;
     }
 
     //创建拍卖
@@ -40,18 +48,20 @@ contract AutionFactory is IAutionFactory {
     ) public returns (uint256) {
         Aution aution = new Aution();
 
-        //将NFT转让给拍卖合约
-        IERC721 nftContrac = IERC721(_nftContract);
-        nftContrac.safeTransferFrom(msg.sender, address(aution), _nftTokenId);
+        uint256 _startingPriceUsdt = formatEthToUsdtPrice(_startingPrice);
 
         aution.initialize(
             msg.sender,
             _nftContract,
             _nftTokenId,
-            _startingPrice,
+            _startingPriceUsdt,
             block.timestamp,
             _duraion
         );
+
+        //将NFT转让给拍卖合约
+        IERC721 nftContrac = IERC721(_nftContract);
+        nftContrac.transferFrom(msg.sender, address(aution), _nftTokenId);
 
         address autionAddress = address(aution);
 
@@ -87,14 +97,22 @@ contract AutionFactory is IAutionFactory {
     }
 
     //获取link/usdt价格
-    function formatLinkToUsdtPrice(uint256 amount) external view override returns(uint256) {
+    function formatLinkToUsdtPrice(uint256 amount) public view override returns(uint256) {
+        if (_isHardHat) {
+            return amount * uint256(276869763895);
+        }
+
         AggregatorV3Interface priceFeed = _priceFeeds[linkAddress];
         (,int256 price,,,) = priceFeed.latestRoundData();
         return amount * uint256(price);
     }
 
     //获取eth/usdt价格
-    function formatEthToUsdtPrice(uint256 amount) external view override returns(uint256) {
+    function formatEthToUsdtPrice(uint256 amount) public view override returns(uint256) {
+        if (_isHardHat) {
+            return amount * uint256(1452876000);
+        }
+
         AggregatorV3Interface priceFeed = _priceFeeds[ethAddress];
         (,int256 price,,,) = priceFeed.latestRoundData();
         return amount * uint256(price);

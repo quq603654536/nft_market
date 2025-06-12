@@ -9,7 +9,10 @@ const config: HardhatUserConfig = {
     sepolia: {
       url: process.env.SEPOLIA_RPC_URL as string,
       accounts: [
-        process.env.ACCOUNT_PRIVATE_KEY as string,
+        process.env.ACCOUNT_1_PRIVATE_KEY as string,
+        process.env.ACCOUNT_2_PRIVATE_KEY as string,
+        process.env.ACCOUNT_3_PRIVATE_KEY as string,
+        process.env.ACCOUNT_4_PRIVATE_KEY as string,
       ]
     }
   }
