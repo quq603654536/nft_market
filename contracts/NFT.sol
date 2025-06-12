@@ -10,14 +10,19 @@ import {Client} from "@chainlink/contracts-ccip/contracts/libraries/Client.sol";
 // 一个NFT拍卖市场
 contract NFT is ERC721URIStorage, CCIPReceiver {
     // CCIP 路由器地址（需根据网络配置，如以太坊主网为 0x2718281c...）
+    // https://docs.chain.link/ccip/directory/testnet
     address public ccipRouter;
     // 跨链消息来源链的链 ID（如 Solana 为 101，需参考 CCIP 文档）
     uint64 public sourceChainId;
 
     uint256 private _nextTokenId = 0;
     address private _owner;
+
+    // 添加消息 ID 缓存
+    mapping(bytes32 => bool) public processedMessages;
+
     constructor(
-        address _ccipRouter,
+        address _ccipRouter, 
         uint64 _sourceChainId
     ) ERC721("MyMarket", "MMK") CCIPReceiver(_ccipRouter) {
         _owner = msg.sender;
@@ -77,6 +82,12 @@ contract NFT is ERC721URIStorage, CCIPReceiver {
     function _ccipReceive(
         Client.Any2EVMMessage memory any2EvmMessage
     ) internal override {
+         // 校验消息来源链（防止非预期链的消息）
+        require(condition);(msg.sender == ccipRouter, "Only CCIP router can send messages");
+        require(condition);(any2EvmMessage.sourceChainSelector == sourceChainId, "Invalid source chain");
+        // 同个跨链消息只处理一次
+        require(!processedMessages[messageId], "Message already processed");
+        processedMessages[messageId] = true;
 
         // 解析消息内容（示例格式：bytes = abi.encode(tokenId, senderAddress, uri)）
         (uint256 tokenId, address nftOwner, string memory tokenURI) = abi
