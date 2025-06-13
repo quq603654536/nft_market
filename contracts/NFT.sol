@@ -22,15 +22,15 @@ contract NFT is ERC721URIStorageUpgradeable, CCIPReceiverUpgradeable, UUPSUpgrad
 
     function initialize(address _ccipRouter, uint64 _sourceChainId) public initializer {
         // 调用父合约的初始化函数
-        __ERC721_init("MyMarket", "MMK");
+        __ERC721_init("MyNFT", "MNT");
         __UUPSUpgradeable_init();
         __CCIPReceiver_init(_ccipRouter);  // 初始化 CCIPReceiver
         _owner = msg.sender;
         sourceChainId = _sourceChainId;
-        _nextTokenId = 0; // 在初始化函数中设置初始值
+        _nextTokenId = 1; // 在初始化函数中设置初始值
     }
 
-    event SendNFT(address recipient, string tokenURI);
+    event SendNFT(address recipient, string tokenURI, uint256 tokenId);
     // 事件日志
     event CrossChainMessageReceived(
         bytes32 indexed messageId,
@@ -74,11 +74,11 @@ contract NFT is ERC721URIStorageUpgradeable, CCIPReceiverUpgradeable, UUPSUpgrad
     ) public onlyOwner returns (uint256) {
         require(recipient != address(0), "Recipient address cannot be zero");
 
-        uint256 _tokenId = ++_nextTokenId;
+        uint256 _tokenId = _nextTokenId++;
         _mint(recipient, _tokenId);
         _setTokenURI(_tokenId, tokenURI);
 
-        emit SendNFT(recipient, tokenURI);
+        emit SendNFT(recipient, tokenURI, _tokenId);
 
         return _tokenId;
     }
@@ -88,6 +88,11 @@ contract NFT is ERC721URIStorageUpgradeable, CCIPReceiverUpgradeable, UUPSUpgrad
         require(to != address(0), "Recipient address cannot be zero");
         // 函数会自动检查调用者是否为代币所有者、被授权者或运营商
         safeTransferFrom(msg.sender, to, tokenId);
+    }
+
+    // 获取下一个Token ID
+    function getNextTokenId() public view returns (uint256) {
+        return _nextTokenId;
     }
 
     /// handle a received message

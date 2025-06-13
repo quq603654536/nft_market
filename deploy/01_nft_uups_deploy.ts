@@ -3,9 +3,11 @@ import { upgrades } from "hardhat";
 import { verify } from "../utils/verify";
 import { saveProxyAddress } from "../utils/proxyAddress";
 
+const tokenURI = "https://peach-gentle-barracuda-756.mypinata.cloud/ipfs/bafkreibehmhttzuikx2cxlnfgmes73o5a2d4u7ficjga5ezgzixmuagrie";
+
 async function main() {
   // 获取部署账户
-  const [deployer] = await ethers.getSigners();
+  const [deployer, addr1] = await ethers.getSigners();
   console.log("使用账户地址进行部署:", deployer.address);
 
   // CCIP Router 地址 - Sepolia 测试网
@@ -44,20 +46,28 @@ async function main() {
   const implementationAddress = await upgrades.erc1967.getImplementationAddress(nftAddress);
   console.log("实现合约地址:", implementationAddress);
 
-  // 在 Etherscan 上验证实现合约
-  if (process.env.ETHERSCAN_API_KEY) {
-    console.log("等待区块确认...");
-    // 获取部署交易并等待 6 个区块确认
-    // 这是为了确保交易被充分确认，避免验证失败
-    const deploymentTx = await nft.deploymentTransaction();
-    if (deploymentTx) {
-      await deploymentTx.wait(6);
-    }
-    
-    console.log("正在验证实现合约...");
-    // 验证实现合约的源代码
-    await verify(implementationAddress, []);
+  console.log("等待区块确认...");
+  // 获取部署交易并等待 6 个区块确认
+  // 这是为了确保交易被充分确认，避免验证失败
+  const deploymentTx = await nft.deploymentTransaction();
+  if (deploymentTx) {
+    await deploymentTx.wait(6);
   }
+
+  // 铸造一个NFT
+  const nftContract = await ethers.getContractAt("NFT", nftAddress);
+  console.log("开始铸造 NFT...");
+  const tx = await nftContract.connect(deployer).sendNFT(addr1.address, tokenURI);
+  console.log("等待铸造交易确认...");
+  
+  // 获取当前 tokenId
+  const tokenId = await nftContract.ownerOf(1);
+  console.log("NFT Token ID:", tokenId.toString());
+  
+  console.log("获取下一个 Token ID...");
+  const nextTokenId = await nftContract.getNextTokenId();
+  console.log("下一个 Token ID:", nextTokenId.toString());
+
 }
 
 // 执行部署脚本
