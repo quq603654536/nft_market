@@ -1,6 +1,5 @@
-
 import { expect } from "chai";
-import { ethers } from "hardhat";
+import { ethers, upgrades } from "hardhat";
 
 const tokenURI = "https://peach-gentle-barracuda-756.mypinata.cloud/ipfs/bafkreibehmhttzuikx2cxlnfgmes73o5a2d4u7ficjga5ezgzixmuagrie";
 const tokenId = 1;
@@ -19,10 +18,15 @@ describe('Market', () => {
         account = accounts[0];
         addr1 = accounts[1];
         addr2 = accounts[2];
+        
+        // 使用 UUPS 代理模式部署合约
         const Factory = await ethers.getContractFactory('NFT');
-        nftContract = await Factory.deploy("0x0BF3dE8c5D3e8A2B34D2BEeB17ABfCeBaf363A59", 101);
+        nftContract = await upgrades.deployProxy(Factory, 
+            ["0x0BF3dE8c5D3e8A2B34D2BEeB17ABfCeBaf363A59", 101],
+            { initializer: 'initialize' }
+        );
         await nftContract.waitForDeployment();
-        console.log("部署合约成功", nftContract.target)
+        console.log("部署合约成功", nftContract.target);
     });
 
     it("deploy success", async () => {
@@ -32,9 +36,8 @@ describe('Market', () => {
     describe("sendNFT", () => {
         it("发送NFT成功", async () => {
             await expect(nftContract.connect(account).sendNFT(addr1.address, tokenURI))
-                .to.emit(nftContract, "SendNFT") //断言会有event事件，且参数为addr1.address和tokenURI
-                .withArgs(addr1.address, tokenURI);
-
+                .to.emit(nftContract, "SendNFT")
+                .withArgs(addr1.address, tokenURI, tokenId);
 
             // 断言tokenId为1的NFT属于addr1.address
             expect(await nftContract.ownerOf(tokenId)).to.equal(addr1.address);

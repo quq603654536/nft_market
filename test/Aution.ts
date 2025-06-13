@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import { ethers } from "hardhat";
+import { ethers, upgrades } from "hardhat";
 
 
 describe("Aution System", function () {
@@ -22,9 +22,12 @@ describe("Aution System", function () {
         [owner, seller, bidder1, bidder2] = await ethers.getSigners()
 
         // 部署NFT合约
-        const nftFactory = await ethers.getContractFactory("NFT")
-        nftContract = await nftFactory.deploy("0x0BF3dE8c5D3e8A2B34D2BEeB17ABfCeBaf363A59", 101)
-        await nftContract.waitForDeployment()
+        const Factory = await ethers.getContractFactory('NFT');
+        nftContract = await upgrades.deployProxy(Factory, 
+            ["0x0BF3dE8c5D3e8A2B34D2BEeB17ABfCeBaf363A59", 101],
+            { initializer: 'initialize' }
+        );
+        await nftContract.waitForDeployment();
         console.log("NFT合约地址", nftContract.target)
 
         // 铸币
